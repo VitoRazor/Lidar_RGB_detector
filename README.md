@@ -1,7 +1,7 @@
 ![GuidePic](https://github.com/VitoRazor/Lidar_RGB_detector/blob/master/images/3Ddetector.png)
 # Lidar with RGB 
-This project is used to verify the usefulness of RGB channels for 3D target detection.
-The project matches the RGB pixels from the image to the lidar point cloud through the camera model.To some extent, 3D AP is improved.
+This project is used to verify the usefulness of RGB channels for 3D Object detection.
+The project matches the RGB pixels from the image to the lidar point cloud through the camera model. When constructing data, add RGB channels to points. Then, load the data into the model for training or prediction. To some extent, 3D AP is improved.
 
 The detector comes from the project, [second.pytorch](https://github.com/nutonomy/second.pytorch)
 Thank you very much for the author's tireless efforts, from which I learned a lot.
