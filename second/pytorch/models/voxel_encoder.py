@@ -253,3 +253,44 @@ class SimpleVoxelRadius(nn.Module):
         res = torch.cat([feature, points_mean[:, 2:self.num_input_features]],
                         dim=1)
         return res
+@register_vfe
+class SimpleVoxel_bgr(nn.Module):
+    def __init__(self,
+                 num_input_features=7,
+                 use_norm=True,
+                 num_filters=[32, 128],
+                 with_distance=False,
+                 voxel_size=(0.2, 0.2, 4),
+                 pc_range=(0, -40, -3, 70.4, 40, 1),
+                 name='VoxelFeatureExtractor'):
+        super(SimpleVoxel_bgr, self).__init__()
+        self.name = name
+        self.num_input_features = num_input_features
+
+    def forward(self, features, num_voxels, coors):
+        # features: [concated_num_points, num_voxel_size, 3(4)]
+        # num_voxels: [concated_num_points]
+        points_mean = features[:, :, :self.num_input_features].sum(
+            dim=1, keepdim=False) / num_voxels.type_as(features).view(-1, 1)
+        return points_mean.contiguous()
+@register_vfe
+class SimpleVoxel_bgr_f(nn.Module):
+    def __init__(self,
+                 num_input_features=7,
+                 use_norm=True,
+                 num_filters=[32, 128],
+                 with_distance=False,
+                 voxel_size=(0.2, 0.2, 4),
+                 pc_range=(0, -40, -3, 70.4, 40, 1),
+                 name='SimpleVoxel_bgr_f'):
+        super(SimpleVoxel_bgr_f, self).__init__()
+        self.name = name
+        self.num_input_features = num_input_features
+
+    def forward(self, features, num_voxels, coors):
+        # features: [concated_num_points, num_voxel_size, 3(4)]
+        # num_voxels: [concated_num_points]
+        features[:, :, 7:self.num_input_features] = torch.softmax(features[:, :, 7:self.num_input_features],dim=2)
+        points_mean = features[:, :, :self.num_input_features].sum(
+            dim=1, keepdim=False) / num_voxels.type_as(features).view(-1, 1)
+        return points_mean.contiguous()

@@ -34,7 +34,7 @@ import second.core.preprocess as prep
 import second.kittiviewer.control_panel as panel
 from second.core.anchor_generator import AnchorGeneratorStride
 from second.core.box_coders import GroundBox3dCoder
-from second.core.point_cloud.point_cloud_ops import points_to_voxel
+#from second.core.point_cloud.point_cloud_ops import points_to_voxel
 from second.core.region_similarity import (
     DistanceSimilarity, NearestIouSimilarity, RotateIouSimilarity)
 from second.core.sample_ops import (

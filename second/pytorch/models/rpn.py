@@ -527,3 +527,124 @@ class RPNNoHead(RPNNoHeadBase):
             block.add(nn.ReLU())
 
         return block, planes
+
+class RPNBase_KL(RPNNoHeadBase):
+    def __init__(self,
+                 use_norm=True,
+                 num_class=2,
+                 layer_nums=(3, 5, 5),
+                 layer_strides=(2, 2, 2),
+                 num_filters=(128, 128, 256),
+                 upsample_strides=(1, 2, 4),
+                 num_upsample_filters=(256, 256, 256),
+                 num_input_features=128,
+                 num_anchor_per_loc=2,
+                 encode_background_as_zeros=True,
+                 use_direction_classifier=True,
+                 use_groupnorm=False,
+                 num_groups=32,
+                 box_code_size=7,
+                 num_direction_bins=2,
+                 name='rpn'):
+        """upsample_strides support float: [0.25, 0.5, 1]
+        if upsample_strides < 1, conv2d will be used instead of convtranspose2d.
+        """
+        super(RPNBase_KL, self).__init__(
+            use_norm=use_norm,
+            num_class=num_class,
+            layer_nums=layer_nums,
+            layer_strides=layer_strides,
+            num_filters=num_filters,
+            upsample_strides=upsample_strides,
+            num_upsample_filters=num_upsample_filters,
+            num_input_features=num_input_features,
+            num_anchor_per_loc=num_anchor_per_loc,
+            encode_background_as_zeros=encode_background_as_zeros,
+            use_direction_classifier=use_direction_classifier,
+            use_groupnorm=use_groupnorm,
+            num_groups=num_groups,
+            box_code_size=box_code_size,
+            num_direction_bins=num_direction_bins,
+            name=name)
+        self._num_anchor_per_loc = num_anchor_per_loc
+        self._num_direction_bins = num_direction_bins
+        self._num_class = num_class
+        self._use_direction_classifier = use_direction_classifier
+        box_code_size += 7
+        self._box_code_size = box_code_size
+
+        if encode_background_as_zeros:
+            num_cls = num_anchor_per_loc * num_class
+        else:
+            num_cls = num_anchor_per_loc * (num_class + 1)
+        if len(num_upsample_filters) == 0:
+            final_num_filters = self._num_out_filters
+        else:
+            final_num_filters = sum(num_upsample_filters)
+        self.conv_cls = nn.Conv2d(final_num_filters, num_cls, 1)
+        self.conv_box = nn.Conv2d(final_num_filters,
+                                  num_anchor_per_loc * box_code_size, 1)
+        if use_direction_classifier:
+            self.conv_dir_cls = nn.Conv2d(
+                final_num_filters, num_anchor_per_loc * num_direction_bins, 1)
+
+    def forward(self, x):
+        res = super().forward(x)
+        x = res["out"]
+        box_preds = self.conv_box(x)
+        cls_preds = self.conv_cls(x)
+        # [N, C, y(H), x(W)]
+        C, H, W = box_preds.shape[1:]
+        box_preds = box_preds.view(-1, self._num_anchor_per_loc,
+                                   self._box_code_size, H, W).permute(
+                                       0, 1, 3, 4, 2).contiguous()
+        cls_preds = cls_preds.view(-1, self._num_anchor_per_loc,
+                                   self._num_class, H, W).permute(
+                                       0, 1, 3, 4, 2).contiguous()
+        # box_preds = box_preds.permute(0, 2, 3, 1).contiguous()
+        # cls_preds = cls_preds.permute(0, 2, 3, 1).contiguous()
+
+        ret_dict = {
+            "box_preds": box_preds,
+            "cls_preds": cls_preds,
+        }
+        if self._use_direction_classifier:
+            dir_cls_preds = self.conv_dir_cls(x)
+            dir_cls_preds = dir_cls_preds.view(
+                -1, self._num_anchor_per_loc, self._num_direction_bins, H,
+                W).permute(0, 1, 3, 4, 2).contiguous()
+            # dir_cls_preds = dir_cls_preds.permute(0, 2, 3, 1).contiguous()
+            ret_dict["dir_cls_preds"] = dir_cls_preds
+        return ret_dict
+
+@register_rpn
+class RPN_KL(RPNBase_KL):
+    def _make_layer(self, inplanes, planes, num_blocks, stride=1):
+        if self._use_norm:
+            if self._use_groupnorm:
+                BatchNorm2d = change_default_args(
+                    num_groups=self._num_groups, eps=1e-3)(GroupNorm)
+            else:
+                BatchNorm2d = change_default_args(
+                    eps=1e-3, momentum=0.01)(nn.BatchNorm2d)
+            Conv2d = change_default_args(bias=False)(nn.Conv2d)
+            ConvTranspose2d = change_default_args(bias=False)(
+                nn.ConvTranspose2d)
+        else:
+            BatchNorm2d = Empty
+            Conv2d = change_default_args(bias=True)(nn.Conv2d)
+            ConvTranspose2d = change_default_args(bias=True)(
+                nn.ConvTranspose2d)
+
+        block = Sequential(
+            nn.ZeroPad2d(1),
+            Conv2d(inplanes, planes, 3, stride=stride),
+            BatchNorm2d(planes),
+            nn.ReLU(),
+        )
+        for j in range(num_blocks):
+            block.add(Conv2d(planes, planes, 3, padding=1))
+            block.add(BatchNorm2d(planes))
+            block.add(nn.ReLU())
+
+        return block, planes

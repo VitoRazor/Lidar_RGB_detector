@@ -55,7 +55,7 @@ def example_convert_to_torch(example, dtype=torch.float32,
     return example_torch
 
 
-def build_network(model_cfg, measure_time=False):
+def build_network(model_cfg, measure_time=False, KL=False):
     voxel_generator = voxel_builder.build(model_cfg.voxel_generator)
     bv_range = voxel_generator.point_cloud_range[[0, 1, 3, 4]]
     box_coder = box_coder_builder.build(model_cfg.box_coder)
@@ -63,8 +63,9 @@ def build_network(model_cfg, measure_time=False):
     target_assigner = target_assigner_builder.build(target_assigner_cfg,
                                                     bv_range, box_coder)
     box_coder.custom_ndim = target_assigner._anchor_generators[0].custom_ndim
+    print(KL)
     net = second_builder.build(
-        model_cfg, voxel_generator, target_assigner, measure_time=measure_time)
+        model_cfg, voxel_generator, target_assigner, measure_time=measure_time, KL = KL )
     return net
 
 def _worker_init_fn(worker_id):
@@ -129,6 +130,7 @@ def filter_param_dict(state_dict: dict, include: str=None, exclude: str=None):
 
 def train(config_path,
           model_dir,
+          KL = False,
           result_path=None,
           create_folder=False,
           display_step=50,
@@ -174,8 +176,12 @@ def train(config_path,
     eval_input_cfg = config.eval_input_reader
     model_cfg = config.model.second
     train_cfg = config.train_config
-
-    net = build_network(model_cfg, measure_time).to(device)
+    if model_cfg.rpn.module_class_name == "RPN_KL":
+        KL = True
+    else:
+        KL = False
+    print(KL)
+    net = build_network(model_cfg, measure_time,KL).to(device)
     # if train_cfg.enable_mixed_precision:
     #     net.half()
     #     net.metrics_to_float()
@@ -300,9 +306,14 @@ def train(config_path,
                 time_metrics = example["metrics"]
                 example.pop("metrics")
                 example_torch = example_convert_to_torch(example, float_dtype)
-
                 batch_size = example["anchors"].shape[0]
-
+                # print("num_points:",max(example_torch['num_points']))
+                # print("num_voxels:",example_torch['num_voxels'].shape)
+                # print("anchors:",example_torch['anchors'].shape)
+                # print("voxels:",example_torch['voxels'].shape)
+                # print(example_torch['voxels'][0:3])
+                # print("coordinates:",example_torch['coordinates'].shape)
+                # exit()
                 ret_dict = net_parallel(example_torch)
                 cls_preds = ret_dict["cls_preds"]
                 loss = ret_dict["loss"].mean()
@@ -564,7 +575,7 @@ def helper_tune_target_assigner(config_path, target_rate=None, update_freq=200, 
     model_cfg = config.model.second
     train_cfg = config.train_config
 
-    net = build_network(model_cfg, False)
+    net = build_network(model_cfg, False, KL)
     # if train_cfg.enable_mixed_precision:
     #     net.half()
     #     net.metrics_to_float()

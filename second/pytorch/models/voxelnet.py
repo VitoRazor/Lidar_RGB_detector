@@ -104,6 +104,7 @@ class VoxelNet(nn.Module):
                  nms_class_agnostic=False,
                  num_direction_bins=2,
                  direction_limit_offset=0,
+                 KL_loss = False,
                  name='voxelnet'):
         super().__init__()
         self.name = name
@@ -139,6 +140,10 @@ class VoxelNet(nn.Module):
         self._nms_class_agnostic = nms_class_agnostic
         self._num_direction_bins = num_direction_bins
         self._dir_limit_offset = direction_limit_offset
+        self.KL_loss = KL_loss
+###################################### KL_loss####################################
+        # if self.KL_loss:
+        #     self._box_coder.code_size = self._box_coder.code_size + 6
         self.voxel_feature_extractor = voxel_encoder.get_vfe_class(vfe_class_name)(
             num_input_features,
             use_norm,
@@ -256,27 +261,47 @@ class VoxelNet(nn.Module):
         cls_targets = cls_targets.unsqueeze(-1)
         self.end_timer("prepare weight forward")
         self.start_timer("create_loss forward")
-        loc_loss, cls_loss = create_loss(
-            self._loc_loss_ftor,
-            self._cls_loss_ftor,
-            box_preds=box_preds,
-            cls_preds=cls_preds,
-            cls_targets=cls_targets,
-            cls_weights=cls_weights * importance,
-            reg_targets=reg_targets,
-            reg_weights=reg_weights * importance,
-            num_class=self._num_class,
-            encode_rad_error_by_sin=self._encode_rad_error_by_sin,
-            encode_background_as_zeros=self._encode_background_as_zeros,
-            box_code_size=self._box_coder.code_size,
-            sin_error_factor=self._sin_error_factor,
-            num_direction_bins=self._num_direction_bins,
-        )
+        if self.KL_loss:
+            loc_loss, cls_loss = create_loss(
+                self._loc_loss_ftor,
+                self._cls_loss_ftor,
+                box_preds=box_preds,
+                cls_preds=cls_preds,
+                cls_targets=cls_targets,
+                cls_weights=cls_weights * importance,
+                reg_targets=reg_targets,
+                reg_weights=reg_weights * importance,
+                num_class=self._num_class,
+                encode_rad_error_by_sin=self._encode_rad_error_by_sin,
+                encode_background_as_zeros=self._encode_background_as_zeros,
+                box_code_size=self._box_coder.code_size + 7,
+                sin_error_factor=self._sin_error_factor,
+                num_direction_bins=self._num_direction_bins,
+            )
+        else:
+            loc_loss, cls_loss = create_loss(
+                self._loc_loss_ftor,
+                self._cls_loss_ftor,
+                box_preds=box_preds,
+                cls_preds=cls_preds,
+                cls_targets=cls_targets,
+                cls_weights=cls_weights * importance,
+                reg_targets=reg_targets,
+                reg_weights=reg_weights * importance,
+                num_class=self._num_class,
+                encode_rad_error_by_sin=self._encode_rad_error_by_sin,
+                encode_background_as_zeros=self._encode_background_as_zeros,
+                box_code_size=self._box_coder.code_size,
+                sin_error_factor=self._sin_error_factor,
+                num_direction_bins=self._num_direction_bins,
+            ) 
+        #print(loc_loss[:,:3,:])
         loc_loss_reduced = loc_loss.sum() / batch_size_dev
         loc_loss_reduced *= self._loc_loss_weight
         cls_pos_loss, cls_neg_loss = _get_pos_neg_loss(cls_loss, labels)
         cls_pos_loss /= self._pos_cls_weight
         cls_neg_loss /= self._neg_cls_weight
+
         cls_loss_reduced = cls_loss.sum() / batch_size_dev
         cls_loss_reduced *= self._cls_loss_weight
         loss = loc_loss_reduced + cls_loss_reduced
@@ -362,7 +387,10 @@ class VoxelNet(nn.Module):
         # coors: [num_voxels, 4]
         preds_dict = self.network_forward(voxels, num_points, coors, batch_size_dev)
         # need to check size.
-        box_preds = preds_dict["box_preds"].view(batch_size_dev, -1, self._box_coder.code_size)
+        if self.KL_loss:
+            box_preds = preds_dict["box_preds"].view(batch_size_dev, -1, self._box_coder.code_size + 7)
+        else:
+            box_preds = preds_dict["box_preds"].view(batch_size_dev, -1, self._box_coder.code_size)
         err_msg = f"num_anchors={batch_anchors.shape[1]}, but num_output={box_preds.shape[1]}. please check size"
         assert batch_anchors.shape[1] == box_preds.shape[1], err_msg
         if self.training:
@@ -402,7 +430,11 @@ class VoxelNet(nn.Module):
         t = time.time()
         batch_box_preds = preds_dict["box_preds"]
         batch_cls_preds = preds_dict["cls_preds"]
-        batch_box_preds = batch_box_preds.view(batch_size, -1,
+        if self.KL_loss:
+            batch_box_preds = batch_box_preds.view(batch_size, -1,
+                                               self._box_coder.code_size + 7)[:,:,:-7]
+        else:
+            batch_box_preds = batch_box_preds.view(batch_size, -1,
                                                self._box_coder.code_size)
         num_class_with_bg = self._num_class
         if not self._encode_background_as_zeros:

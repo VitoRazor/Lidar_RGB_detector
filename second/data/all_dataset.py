@@ -55,7 +55,9 @@ def create_groundtruth_database(dataset_class_name,
         difficulty = np.zeros(gt_boxes.shape[0], dtype=np.int32)
         if "difficulty" in annos:
             difficulty = annos["difficulty"]
-
+        # print("id",image_idx)
+        # print(points.shape)
+        # print(points[0:3])
         num_obj = gt_boxes.shape[0]
         point_indices = box_np_ops.points_in_rbbox(points, gt_boxes)
         for i in range(num_obj):
@@ -64,6 +66,9 @@ def create_groundtruth_database(dataset_class_name,
             gt_points = points[point_indices[:, i]]
 
             gt_points[:, :3] -= gt_boxes[i, :3]
+
+            # print(gt_points)
+            # exit()
             with open(filepath, 'w') as f:
                 gt_points.tofile(f)
             if (used_classes is None) or names[i] in used_classes:

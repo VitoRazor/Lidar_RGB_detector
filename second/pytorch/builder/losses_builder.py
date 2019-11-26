@@ -20,7 +20,7 @@ from second.pytorch.core.ghm_loss import GHMCLoss, GHMRLoss
 from second.protos import losses_pb2
 
 
-def build(loss_config):
+def build(loss_config, KL=False):
   """Build losses based on the config.
 
   Builds classification, localization losses and optionally a hard example miner
@@ -42,7 +42,7 @@ def build(loss_config):
   classification_loss = _build_classification_loss(
       loss_config.classification_loss)
   localization_loss = _build_localization_loss(
-      loss_config.localization_loss)
+      loss_config.localization_loss, KL)
   classification_weight = loss_config.classification_weight
   localization_weight = loss_config.localization_weight
   hard_example_miner = None
@@ -83,7 +83,7 @@ def build_faster_rcnn_classification_loss(loss_config):
       logit_scale=config.logit_scale)
 
 
-def _build_localization_loss(loss_config):
+def _build_localization_loss(loss_config, KL = False ):
   """Builds a localization loss based on the loss config.
 
   Args:
@@ -114,7 +114,19 @@ def _build_localization_loss(loss_config):
       code_weight = None
     else:
       code_weight = config.code_weight
-    return losses.WeightedSmoothL1LocalizationLoss(config.sigma, code_weight)
+    KL = True
+    if KL:
+      return losses.WeightedSmoothL1LocalizationLoss_KL(config.sigma, code_weight)
+    else:
+      return losses.WeightedSmoothL1LocalizationLoss(config.sigma, code_weight)
+  if loss_type == 'weighted_smooth_l1_KL':
+    config = loss_config.weighted_smooth_l1
+    if len(config.code_weight) == 0:
+      code_weight = None
+    else:
+      code_weight = config.code_weight
+    return losses.WeightedSmoothL1LocalizationLoss_KL(config.sigma, code_weight)
+  
   if loss_type == 'weighted_ghm':
     config = loss_config.weighted_ghm
     if len(config.code_weight) == 0:

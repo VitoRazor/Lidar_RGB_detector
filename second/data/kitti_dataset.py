@@ -12,10 +12,13 @@ from second.utils.eval import get_coco_eval_result, get_official_eval_result
 from second.data.dataset import Dataset, register_dataset
 from second.utils.progress_bar import progress_bar_iter as prog_bar
 from second.core.box_np_ops import *
+#from segement.src.seg_model import seg_model
+
+
 
 @register_dataset
 class KittiDataset(Dataset):
-    NumPointFeatures = 4
+    NumPointFeatures = 26
 
     def __init__(self,
                  root_path,
@@ -203,6 +206,11 @@ class KittiDataset(Dataset):
         points = np.fromfile(
             str(velo_path), dtype=np.float32,
             count=-1).reshape([-1, self.NumPointFeatures])
+        #points = points.astype(np.float32)
+        # print(velo_path)
+        # print(points.shape)
+        # print(points[0:3])
+        # exit()
         res["lidar"]["points"] = points
         image_info = info["image"]
         image_path = image_info['image_path']
@@ -401,14 +409,14 @@ def _create_reduced_point_cloud(data_path,
                                 save_path=None,
                                 color = True,
                                 back=False):
-    bgr_path = None
+
     with open(info_path, 'rb') as f:
         kitti_infos = pickle.load(f)
+    #se_mo = seg_model()
+    se_mo = None
     for info in prog_bar(kitti_infos):
         pc_info = info["point_cloud"]
         image_info = info["image"]
-        image_path = image_info['image_path']
-        
         calib = info["calib"]
 
         v_path = pc_info['velodyne_path']
@@ -426,14 +434,28 @@ def _create_reduced_point_cloud(data_path,
             points_v[:, 0] = -points_v[:, 0]
         points_v = box_np_ops.remove_outside_points(points_v, rect, Trv2c, P2,
                                                     image_info["image_shape"])
+        
+        ############## feature path load ###########################
+        # f_path  = image_info['image_path'].split("\\")
+        # feature_file = f_path[0]+"/"+"feature"+"/"+f_path[-1].split(".")[0]+".pkl"
+        # feature_file = v_path.parent.parent.parent / feature_file
+        # with open(str(feature_file), 'rb') as f:
+        #     feature = pickle.load(f)
+
+        ################################################################
+        ##################### add bgr to lidar #############
         points_xyz = lidar_to_camera(points_v,rect,Trv2c)
         points_xy = project_to_image(points_xyz, P2)
+        image_path = image_info['image_path']
         image_path = v_path.parent.parent.parent / image_path
 
         BGR_image = cv2.imread(str(image_path))
         
         points_bgr = np.zeros((len(points_v),3))
+        #points_feature = np.zeros((len(points_v),256))
+        seg_feature = np.zeros((len(points_v),19))
         image_shape = image_info["image_shape"]
+        #seg_out = se_mo.predict(image_path)
         for i in range(len(points_bgr)):
             new_y = int(points_xy[i][0])
             if new_y >= image_shape[1]:
@@ -442,22 +464,21 @@ def _create_reduced_point_cloud(data_path,
             if new_x >= image_shape[0]:
                 new_x = image_shape[0]-1
             points_bgr[i] = BGR_image[new_x][new_y]/255
-        if bgr_path is None:
-            save_bgr_filename = v_path.parent.parent / (
-                v_path.parent.stem + "_bgr") / v_path.name
-            # save_filename = str(v_path) + '_reduced'
-            if back:
-                save_filename += "_bgr_back"
-        else:
-            save_bgr_filename = str(Path(bgr_path) / v_path.name)
-            if back:
-                save_bgr_filename += "_bgr_back"
-        with open(save_bgr_filename, 'w') as f:
-            points_bgr.tofile(f)
-
+            #seg_feature[i] = seg_out[new_x][new_y]
+        # points_bgr = points_bgr.astype(np.float32)
+        # points_v = points_v.astype(np.float32)
+        # seg_feature = seg_feature.astype(np.float32)
+        #points_v = np.concatenate([points_v,points_bgr,points_feature],axis=-1)
+        #points_v = np.concatenate([points_v,points_bgr,seg_feature],axis=-1)
+        ###################################################################
+        points_v = points_v.astype(np.float32)
+        # print("##############################")
+        # print(seg_out[0,1:5,:])
+        # print(points_v.shape)
+        # exit()
         if save_path is None:
             save_filename = v_path.parent.parent / (
-                v_path.parent.stem + "_bgr") / v_path.name
+                v_path.parent.stem + "_reduced") / v_path.name
             # save_filename = str(v_path) + '_reduced'
             if back:
                 save_filename += "_back"
@@ -467,6 +488,75 @@ def _create_reduced_point_cloud(data_path,
                 save_filename += "_back"
         with open(save_filename, 'w') as f:
             points_v.tofile(f)
+    # bgr_path = None
+    # with open(info_path, 'rb') as f:
+    #     kitti_infos = pickle.load(f)
+    # for info in prog_bar(kitti_infos):
+    #     pc_info = info["point_cloud"]
+    #     image_info = info["image"]
+    #     image_path = image_info['image_path']
+        
+    #     calib = info["calib"]
+
+    #     v_path = pc_info['velodyne_path']
+    #     v_path = Path(data_path) / v_path
+    #     points_v = np.fromfile(
+    #         str(v_path), dtype=np.float32, count=-1).reshape([-1, 4])
+    #     rect = calib['R0_rect']
+    #     P2 = calib['P2']
+    #     Trv2c = calib['Tr_velo_to_cam']
+    #     # first remove z < 0 points
+    #     # keep = points_v[:, -1] > 0
+    #     # points_v = points_v[keep]
+    #     # then remove outside.
+    #     if back:
+    #         points_v[:, 0] = -points_v[:, 0]
+    #     points_v = box_np_ops.remove_outside_points(points_v, rect, Trv2c, P2,
+    #                                                 image_info["image_shape"])
+        # points_xyz = lidar_to_camera(points_v,rect,Trv2c)
+        # points_xy = project_to_image(points_xyz, P2)
+        # image_path = v_path.parent.parent.parent / image_path
+
+        # BGR_image = cv2.imread(str(image_path))
+        
+        # points_bgr = np.zeros((len(points_v),3))
+        # image_shape = image_info["image_shape"]
+        # for i in range(len(points_bgr)):
+        #     new_y = int(points_xy[i][0])
+        #     if new_y >= image_shape[1]:
+        #         new_y = image_shape[1]-1
+        #     new_x = int(points_xy[i][1])
+        #     if new_x >= image_shape[0]:
+        #         new_x = image_shape[0]-1
+        #     points_bgr[i] = BGR_image[new_x][new_y]/255
+        # points_v = np.concatenate([points_v,points_bgr],axis=-1)
+
+    #     ######################## save bgr ########################################
+    #     # if bgr_path is None:
+    #     #     save_bgr_filename = v_path.parent.parent / (
+    #     #         v_path.parent.stem + "_bgr") / v_path.name
+    #     #     # save_filename = str(v_path) + '_reduced'
+    #     #     if back:
+    #     #         save_filename += "_bgr_back"
+    #     # else:
+    #     #     save_bgr_filename = str(Path(bgr_path) / v_path.name)
+    #     #     if back:
+    #     #         save_bgr_filename += "_bgr_back"
+    #     # with open(save_bgr_filename, 'w') as f:
+    #     #     points_bgr.tofile(f)
+
+    #     if save_path is None:
+    #         save_filename = v_path.parent.parent / (
+    #             v_path.parent.stem + "_reduced") / v_path.name
+    #         # save_filename = str(v_path) + '_reduced'
+    #         if back:
+    #             save_filename += "_back"
+    #     else:
+    #         save_filename = str(Path(save_path) / v_path.name)
+    #         if back:
+    #             save_filename += "_back"
+    #     with open(save_filename, 'w') as f:
+    #         points_v.tofile(f)
 
 
 def create_reduced_point_cloud(data_path,
@@ -484,7 +574,7 @@ def create_reduced_point_cloud(data_path,
 
     _create_reduced_point_cloud(data_path, train_info_path, save_path)
     _create_reduced_point_cloud(data_path, val_info_path, save_path)
-    _create_reduced_point_cloud(data_path, test_info_path, save_path)
+   # _create_reduced_point_cloud(data_path, test_info_path, save_path)
     if with_back:
         _create_reduced_point_cloud(
             data_path, train_info_path, save_path, back=True)
