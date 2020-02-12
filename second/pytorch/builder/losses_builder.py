@@ -114,7 +114,7 @@ def _build_localization_loss(loss_config, KL = False ):
       code_weight = None
     else:
       code_weight = config.code_weight
-    KL = True
+    print("build_kl",KL)
     if KL:
       return losses.WeightedSmoothL1LocalizationLoss_KL(config.sigma, code_weight)
     else:
