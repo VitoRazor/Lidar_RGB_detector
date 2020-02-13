@@ -95,7 +95,7 @@ def get_kitti_info_path(idx,
     else:
         file_path = pathlib.Path('testing') / info_type / img_idx_str
     if exist_check and not (prefix / file_path).exists():
-        #print(str(prefix / file_path))
+        print(prefix)
         raise ValueError("file not exist: {}".format(file_path))
         
     if relative_path:
@@ -194,7 +194,6 @@ def get_kitti_image_info(path,
     }
     """
     root_path = pathlib.Path(path)
-    print(str(root_path))
     if not isinstance(image_ids, list):
         image_ids = list(range(image_ids))
 

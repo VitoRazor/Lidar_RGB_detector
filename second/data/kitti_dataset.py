@@ -18,7 +18,7 @@ from second.core.box_np_ops import *
 
 @register_dataset
 class KittiDataset(Dataset):
-    NumPointFeatures = 4
+    NumPointFeatures = 26
 
     def __init__(self,
                  root_path,
@@ -206,7 +206,7 @@ class KittiDataset(Dataset):
         points = np.fromfile(
             str(velo_path), dtype=np.float32,
             count=-1).reshape([-1, self.NumPointFeatures])
-        points = points.astype(np.float32)
+        #points = points.astype(np.float32)
         # print(velo_path)
         # print(points.shape)
         # print(points[0:3])
@@ -355,8 +355,8 @@ def create_kitti_info_file(data_path, save_path=None, relative_path=True):
     train_img_ids = _read_imageset_file(str(imageset_folder / "train.txt"))
     val_img_ids = _read_imageset_file(str(imageset_folder / "val.txt"))
     test_img_ids = _read_imageset_file(str(imageset_folder / "test.txt"))
+
     print("Generate info. this may take several minutes.")
-    #print(data_path)
     if save_path is None:
         save_path = Path(data_path)
     else:
@@ -449,21 +449,21 @@ def _create_reduced_point_cloud(data_path,
         image_path = image_info['image_path']
         image_path = v_path.parent.parent.parent / image_path
 
-        #BGR_image = cv2.imread(str(image_path))
+        BGR_image = cv2.imread(str(image_path))
         
-        #points_bgr = np.zeros((len(points_v),3))
+        points_bgr = np.zeros((len(points_v),3))
         #points_feature = np.zeros((len(points_v),256))
-        #seg_feature = np.zeros((len(points_v),19))
+        seg_feature = np.zeros((len(points_v),19))
         image_shape = image_info["image_shape"]
         #seg_out = se_mo.predict(image_path)
-        # for i in range(len(points_bgr)):
-        #     new_y = int(points_xy[i][0])
-        #     if new_y >= image_shape[1]:
-        #         new_y = image_shape[1]-1
-        #     new_x = int(points_xy[i][1])
-        #     if new_x >= image_shape[0]:
-        #         new_x = image_shape[0]-1
-        #     points_bgr[i] = BGR_image[new_x][new_y]/255
+        for i in range(len(points_bgr)):
+            new_y = int(points_xy[i][0])
+            if new_y >= image_shape[1]:
+                new_y = image_shape[1]-1
+            new_x = int(points_xy[i][1])
+            if new_x >= image_shape[0]:
+                new_x = image_shape[0]-1
+            points_bgr[i] = BGR_image[new_x][new_y]/255
             #seg_feature[i] = seg_out[new_x][new_y]
         # points_bgr = points_bgr.astype(np.float32)
         # points_v = points_v.astype(np.float32)
@@ -471,7 +471,7 @@ def _create_reduced_point_cloud(data_path,
         #points_v = np.concatenate([points_v,points_bgr,points_feature],axis=-1)
         #points_v = np.concatenate([points_v,points_bgr,seg_feature],axis=-1)
         ###################################################################
-        #points_v = points_v.astype(np.float32)
+        points_v = points_v.astype(np.float32)
         # print("##############################")
         # print(seg_out[0,1:5,:])
         # print(points_v.shape)
@@ -574,7 +574,7 @@ def create_reduced_point_cloud(data_path,
 
     _create_reduced_point_cloud(data_path, train_info_path, save_path)
     _create_reduced_point_cloud(data_path, val_info_path, save_path)
-    _create_reduced_point_cloud(data_path, test_info_path, save_path)
+   # _create_reduced_point_cloud(data_path, test_info_path, save_path)
     if with_back:
         _create_reduced_point_cloud(
             data_path, train_info_path, save_path, back=True)
