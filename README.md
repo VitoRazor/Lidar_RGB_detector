@@ -7,17 +7,28 @@ Thank you very much for the author's tireless efforts, from which I learned a lo
 # update 26.2.2020
 Some algorithms have been updated:
 1.Toward feature confusion-Voxel network:
-
+```
 Combining point cloud location and segmentation characteristics 
+```
 2.Spares-attention: 
-
+```
 Using spares CNN for the problem of uneven detection of objects of different sizes
+```
 3.Density-award Bounding Box Regression:
-
+```
 Reducing labeling uncertainty brings problems
+```
 4.ssd with asff:
-
+```
 The new module is used to automatically adapt the features of different scales
+```
+|model|coco easy|coco midle|coco hard|
+| ------ | ------ | ------ |------ |
+|baseline|62.5 |57.56|55.7|
+|feature confusion-Voxel |62.54|57.5 |55.3|
+|ASFF|62.37|57.64 |55.78|
+|Density-award Bounding Box|62.81|57.6 |55.66|
+|full-3D|61.39|57.09 |55.28|
 ### Performance in KITTI lidar validation set (50/50 split)
 
 
