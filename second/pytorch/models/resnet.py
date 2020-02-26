@@ -59,7 +59,6 @@ class SparseBasicBlock(spconv.SparseModule):
 
         if self.downsample is not None:
             identity = self.downsample(x)
-
         out.features += identity.features
         out.features = self.relu(out.features)
 
@@ -108,3 +107,5 @@ class SparseBottleneck(spconv.SparseModule):
         out.features = self.relu(out.features)
 
         return out
+
+

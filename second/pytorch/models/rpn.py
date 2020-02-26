@@ -354,6 +354,7 @@ class RPNNoHeadBase_asff(nn.Module):
         if upsample_strides < 1, conv2d will be used instead of convtranspose2d.
         """
         super(RPNNoHeadBase_asff, self).__init__()
+        print("use_asff")
         self._layer_strides = layer_strides
         self._num_filters = num_filters
         self._layer_nums = layer_nums
@@ -484,7 +485,7 @@ class RPNNoHeadBase_asff(nn.Module):
 
 
 
-class RPNBase(RPNNoHeadBase_asff):
+class RPNBase(RPNNoHeadBase):
     # if asff , use  RPNNoHeadBase_asff
     def __init__(self,
                  use_norm=True,

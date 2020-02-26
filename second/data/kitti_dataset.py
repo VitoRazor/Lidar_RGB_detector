@@ -18,7 +18,7 @@ from second.core.box_np_ops import *
 
 @register_dataset
 class KittiDataset(Dataset):
-    NumPointFeatures = 26
+    NumPointFeatures = 7
 
     def __init__(self,
                  root_path,
@@ -206,7 +206,7 @@ class KittiDataset(Dataset):
         points = np.fromfile(
             str(velo_path), dtype=np.float32,
             count=-1).reshape([-1, self.NumPointFeatures])
-        #points = points.astype(np.float32)
+        points = points.astype(np.float32)
         # print(velo_path)
         # print(points.shape)
         # print(points[0:3])
@@ -453,7 +453,7 @@ def _create_reduced_point_cloud(data_path,
         
         points_bgr = np.zeros((len(points_v),3))
         #points_feature = np.zeros((len(points_v),256))
-        seg_feature = np.zeros((len(points_v),19))
+        # seg_feature = np.zeros((len(points_v),19))
         image_shape = image_info["image_shape"]
         #seg_out = se_mo.predict(image_path)
         for i in range(len(points_bgr)):
@@ -468,6 +468,7 @@ def _create_reduced_point_cloud(data_path,
         # points_bgr = points_bgr.astype(np.float32)
         # points_v = points_v.astype(np.float32)
         # seg_feature = seg_feature.astype(np.float32)
+        points_v = np.concatenate([points_v,points_bgr],axis=-1)
         #points_v = np.concatenate([points_v,points_bgr,points_feature],axis=-1)
         #points_v = np.concatenate([points_v,points_bgr,seg_feature],axis=-1)
         ###################################################################

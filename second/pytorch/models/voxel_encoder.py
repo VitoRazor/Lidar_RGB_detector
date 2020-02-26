@@ -221,7 +221,7 @@ class SimpleVoxel(nn.Module):
         # num_voxels: [concated_num_points]
         points_mean = features[:, :, :self.num_input_features].sum(
             dim=1, keepdim=False) / num_voxels.type_as(features).view(-1, 1)
-        print(points_mean.shape)
+        #print(points_mean.shape)
         return points_mean.contiguous()
 
 @register_vfe
