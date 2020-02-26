@@ -2,10 +2,22 @@
 # Lidar with RGB 
 This project is used to verify the usefulness of RGB channels for 3D Object detection.
 The project matches the RGB pixels from the image to the lidar point cloud through the camera model. When constructing data, add RGB channels to points. Then, load the data into the model for training or prediction. To some extent, 3D AP is improved.
-
 The detector comes from the project, [second.pytorch](https://github.com/nutonomy/second.pytorch)
 Thank you very much for the author's tireless efforts, from which I learned a lot.
+# update 26.2.2020
+Some algorithms have been updated:
+1.Toward feature confusion-Voxel network:
 
+Combining point cloud location and segmentation characteristics 
+2.Spares-attention: 
+
+Using spares CNN for the problem of uneven detection of objects of different sizes
+3.Density-award Bounding Box Regression:
+
+Reducing labeling uncertainty brings problems
+4.ssd with asff:
+
+The new module is used to automatically adapt the features of different scales
 ### Performance in KITTI lidar validation set (50/50 split)
 
 
