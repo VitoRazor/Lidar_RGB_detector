@@ -24,7 +24,7 @@ The new module is used to automatically adapt the features of different scales
 ```
 |model|coco easy|coco midle|coco hard|
 | ------ | ------ | ------ |------ |
-|baseline|62.5 |57.56|55.7|
+|baseline|62.1 |57.23|55.2|
 |feature confusion-Voxel |62.54|57.5 |55.3|
 |ASFF|62.37|57.64 |55.78|
 |Density-award Bounding Box|62.81|57.6 |55.66|
